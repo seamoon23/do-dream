@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #18201d;
+  background: #f7f3ea;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.react-flow__node {
+  border-radius: 8px;
+  border: 1px solid rgba(24, 32, 29, 0.16);
+  box-shadow: 0 10px 24px rgba(32, 48, 39, 0.12);
+}
+
+.react-flow__attribution {
+  display: none;
+}

@@ -1,0 +1,73 @@
+{
+  "app": "IdeaRouteBuilder",
+  "version": 1,
+  "exportedAt": "2026-06-25T00:00:00+09:00",
+  "data": {
+    "ideas": [
+      {
+        "id": "idea-sample-001",
+        "title": "아이디어 절차 관리 앱",
+        "summary": "아이디어를 검토하고 단계별 실행 절차와 프롬프트를 관리하는 개인용 웹앱",
+        "problem": "아이디어와 참고자료가 흩어져 코덱스에 넘기기 전 정리가 반복된다.",
+        "targetUser": "AI 코딩 도구를 활용하는 개인 개발자",
+        "expectedValue": "요구사항 정리, 실행 가능성 검토, 작업 프롬프트 패키징 시간을 줄인다.",
+        "monetizationNote": "개인 유틸로 시작하고, 추후 광고 없는 유료/설치형 도구 가능",
+        "status": "READY",
+        "priority": 4,
+        "tags": [
+          "AI",
+          "Codex",
+          "생산성",
+          "개인툴"
+        ],
+        "memo": "오늘 MVP는 로컬 웹앱으로 충분하다.",
+        "createdAt": "2026-06-25T00:00:00+09:00",
+        "updatedAt": "2026-06-25T00:00:00+09:00"
+      }
+    ],
+    "resources": [
+      {
+        "id": "res-sample-001",
+        "ideaId": "idea-sample-001",
+        "type": "NOTE",
+        "title": "핵심 요구사항 메모",
+        "summary": "아이디어 목록, 첨부 리소스, 검토 점수, 단계 설계, 진행 트리 필요",
+        "tags": [
+          "요구사항"
+        ],
+        "importance": 5,
+        "reviewStatus": "VALID",
+        "createdAt": "2026-06-25T00:00:00+09:00",
+        "updatedAt": "2026-06-25T00:00:00+09:00"
+      }
+    ],
+    "reviewScores": [
+      {
+        "id": "review-sample-001",
+        "ideaId": "idea-sample-001",
+        "problemClarity": 4,
+        "userValue": 5,
+        "implementationDifficulty": 3,
+        "resourceReadiness": 3,
+        "techFit": 5,
+        "scalability": 4,
+        "monetizationPotential": 3,
+        "riskLevel": 4,
+        "totalAverage": 3.88,
+        "verdict": "NEEDS_MORE_RESOURCE",
+        "missingResources": [
+          "MVP 화면 스케치",
+          "기능 우선순위",
+          "수동 테스트 체크리스트"
+        ],
+        "memo": "React Flow는 후순위로 두고 기본 CRUD/Export 먼저 구현",
+        "createdAt": "2026-06-25T00:00:00+09:00",
+        "updatedAt": "2026-06-25T00:00:00+09:00"
+      }
+    ],
+    "stages": [],
+    "flowNodes": [],
+    "flowEdges": [],
+    "promptTemplates": []
+  }
+}

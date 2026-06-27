@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>Idea Route Builder Wireframe</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7f9; color: #1f2937; }
+    header { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: white; border-bottom: 1px solid #e5e7eb; }
+    .app { display: grid; grid-template-columns: 280px 1fr; height: calc(100vh - 56px); }
+    aside { background: white; border-right: 1px solid #e5e7eb; padding: 16px; overflow: auto; }
+    main { padding: 20px; overflow: auto; }
+    button { border: 1px solid #d1d5db; background: white; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+    .primary { background: #111827; color: white; }
+    input, textarea, select { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 8px; padding: 9px; margin-top: 6px; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px; margin: 12px 0; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+    .tab { padding: 8px 12px; border-radius: 999px; border: 1px solid #d1d5db; background: white; }
+    .active { background: #111827; color: white; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .score { display: grid; grid-template-columns: 180px 1fr 40px; gap: 10px; align-items: center; margin: 10px 0; }
+    .bar { height: 10px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: #9ca3af; }
+    .flow { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+    .node { min-width: 150px; border: 1px solid #d1d5db; border-radius: 12px; background: white; padding: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+    .arrow { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>Idea Route Builder</strong>
+    <div>
+      <button>Import</button>
+      <button>Export</button>
+      <button class="primary">+ 새 아이디어</button>
+    </div>
+  </header>
+  <div class="app">
+    <aside>
+      <button class="primary" style="width:100%">+ 새 아이디어</button>
+      <label class="muted">검색</label>
+      <input placeholder="아이디어 검색" />
+      <label class="muted">상태</label>
+      <select><option>전체</option><option>검토중</option><option>실행가능</option></select>
+      <div class="card">
+        <strong>아이디어 절차 관리 앱</strong>
+        <p class="muted">검토 → 단계 → 프롬프트 → 트리</p>
+        <p class="muted">상태: 실행가능 · 점수 3.88</p>
+      </div>
+      <div class="card">
+        <strong>캐릭터 QR 앱</strong>
+        <p class="muted">이미지형 QR 생성 유틸</p>
+        <p class="muted">상태: 수집 · 점수 없음</p>
+      </div>
+    </aside>
+    <main>
+      <h1>아이디어 절차 관리 앱</h1>
+      <p class="muted">아이디어를 검토하고 단계별 실행 절차와 프롬프트를 관리하는 개인용 웹앱</p>
+      <div class="tabs">
+        <span class="tab active">개요</span>
+        <span class="tab">리소스</span>
+        <span class="tab">검토</span>
+        <span class="tab">단계 설계</span>
+        <span class="tab">진행 트리</span>
+        <span class="tab">프롬프트</span>
+        <span class="tab">내보내기</span>
+      </div>
+      <div class="grid">
+        <section class="card">
+          <h2>개요</h2>
+          <label>문제 정의</label>
+          <textarea rows="4">아이디어와 참고자료가 흩어져 코덱스에 넘기기 전 정리가 반복된다.</textarea>
+          <label>대상 사용자</label>
+          <input value="AI 코딩 도구를 활용하는 개인 개발자" />
+          <label>기대 효과</label>
+          <textarea rows="3">요구사항 정리, 실행 가능성 검토, 작업 프롬프트 패키징 시간을 줄인다.</textarea>
+        </section>
+        <section class="card">
+          <h2>검토 요약</h2>
+          <div class="score"><span>문제 명확성</span><div class="bar"><span style="width:80%"></span></div><b>4</b></div>
+          <div class="score"><span>사용자 가치</span><div class="bar"><span style="width:100%"></span></div><b>5</b></div>
+          <div class="score"><span>구현 난이도</span><div class="bar"><span style="width:60%"></span></div><b>3</b></div>
+          <div class="score"><span>기술 적합성</span><div class="bar"><span style="width:100%"></span></div><b>5</b></div>
+          <h3>평균 3.88 · 보완 후 실행</h3>
+        </section>
+      </div>
+      <section class="card">
+        <h2>진행 트리 미리보기</h2>
+        <div class="flow">
+          <div class="node"><b>아이디어 정리</b><br><span class="muted">TODO</span></div>
+          <span class="arrow">→</span>
+          <div class="node"><b>요구사항 정의</b><br><span class="muted">TODO</span></div>
+          <span class="arrow">→</span>
+          <div class="node"><b>MVP 구현</b><br><span class="muted">TODO</span></div>
+          <span class="arrow">↘</span>
+          <div class="node"><b>이슈/분기</b><br><span class="muted">파일 파싱 보류</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
