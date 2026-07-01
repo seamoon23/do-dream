@@ -23,6 +23,8 @@ export type AiReportSource = PromptTool | 'OTHER';
 
 export interface Idea {
   id: string;
+  templateId?: string;
+  templateAppliedAt?: string;
   title: string;
   summary: string;
   problem: string;
@@ -40,6 +42,8 @@ export interface Idea {
 export interface Resource {
   id: string;
   ideaId: string;
+  sourceTemplateId?: string;
+  sourceAgentId?: string;
   type: ResourceType;
   title: string;
   url?: string;
@@ -78,6 +82,7 @@ export interface ReviewScore {
 export interface Stage {
   id: string;
   ideaId: string;
+  sourceTemplateId?: string;
   order: number;
   title: string;
   goal: string;
@@ -95,6 +100,7 @@ export interface Stage {
 export interface FlowNode {
   id: string;
   ideaId: string;
+  sourceTemplateId?: string;
   type: FlowNodeType;
   title: string;
   description?: string;
@@ -109,6 +115,7 @@ export interface FlowNode {
 export interface FlowEdge {
   id: string;
   ideaId: string;
+  sourceTemplateId?: string;
   source: string;
   target: string;
   label?: string;
@@ -120,6 +127,8 @@ export interface PromptTemplate {
   id: string;
   ideaId?: string;
   stageId?: string;
+  sourceTemplateId?: string;
+  sourceAgentId?: string;
   tool: PromptTool;
   title: string;
   body: string;
@@ -132,6 +141,7 @@ export interface PromptTemplate {
 export interface AiReport {
   id: string;
   ideaId: string;
+  sourceAgentId?: string;
   title: string;
   sourceTool: AiReportSource;
   conclusion: string;
@@ -145,7 +155,7 @@ export interface AiReport {
 
 export interface BackupPayload {
   app: 'IdeaRouteBuilder';
-  version: 1 | 2;
+  version: 1 | 2 | 3;
   exportedAt: string;
   data: {
     ideas: Idea[];

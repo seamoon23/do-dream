@@ -1,10 +1,12 @@
-import { Archive, Clipboard, Copy, Download, FileInput, ListChecks, Plus, RefreshCcw, Save, Trash2, Upload } from 'lucide-react';
+import { Archive, Check, Clipboard, Copy, Download, FileInput, ListChecks, Plus, RefreshCcw, Route, Save, Sparkles, Trash2, Upload } from 'lucide-react';
 import { useState } from 'react';
+import type { AgentPlugin } from '../agentPlugins/types';
 import { db } from '../db/database';
 import { type GuideKey, ideaStatusLabels, promptToolLabels, resourceTypeLabels, stageStatusLabels } from '../lib/content';
 import { formatBytes, parseTags, tagsToText } from '../lib/format';
+import type { RouteTemplate } from '../routePlugins/types';
 import type { BackupPayload, Idea, PromptTemplate, PromptTool, Resource, ResourceType, Stage, StageStatus } from '../types/domain';
-import { AppButton, EmptyState, Field, inputClass, SectionIntro } from './ui';
+import { AppButton, classNames, EmptyState, Field, inputClass, SectionIntro } from './ui';
 
 type ToastType = 'success' | 'error' | 'info';
 type IdeaDraft = Omit<Idea, 'id' | 'createdAt' | 'updatedAt'>;
@@ -19,15 +21,111 @@ export function IdeaPanelView(props: {
   draft: IdeaDraft;
   selectedIdea?: Idea;
   setDraft: React.Dispatch<React.SetStateAction<IdeaDraft>>;
+  routeTemplates: RouteTemplate[];
+  recommendedRouteTemplates: RouteTemplate[];
+  routeGoal: string;
+  setRouteGoal: (value: string) => void;
+  selectedRouteTemplateId: string;
+  setSelectedRouteTemplateId: (value: string) => void;
+  applyRouteTemplate: (templateId: string) => void;
   saveIdea: () => void;
   deleteIdea: () => void;
   onGuide: (key: GuideKey) => void;
 }) {
-  const { draft, selectedIdea, setDraft, saveIdea, deleteIdea, onGuide } = props;
+  const {
+    draft,
+    selectedIdea,
+    setDraft,
+    routeTemplates,
+    recommendedRouteTemplates,
+    routeGoal,
+    setRouteGoal,
+    selectedRouteTemplateId,
+    setSelectedRouteTemplateId,
+    applyRouteTemplate,
+    saveIdea,
+    deleteIdea,
+    onGuide,
+  } = props;
+  const visibleTemplates = [
+    ...recommendedRouteTemplates,
+    ...routeTemplates.filter((template) => !recommendedRouteTemplates.some((recommended) => recommended.id === template.id)),
+  ];
+  const selectedTemplate = routeTemplates.find((template) => template.id === selectedRouteTemplateId);
+  const appliedTemplateId = selectedIdea?.templateId ?? 'plain';
+  const canApplyTemplate = Boolean(selectedIdea && selectedRouteTemplateId !== 'plain');
 
   return (
     <div className="grid gap-4">
       <SectionIntro guideKey="idea" onGuide={onGuide} />
+      <div className="rounded-3xl border border-ink/10 bg-white/88 p-4">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm font-black text-moss">Route Template</p>
+            <h3 className="mt-1 text-lg font-black">어떤 실행 루트로 시작할까요?</h3>
+            <p className="mt-1 text-sm leading-6 text-ink/62">
+              Plain Mode는 기존처럼 빈 보드로 시작합니다. 웹소설 루트는 저장 또는 적용 시 단계, 자료, 프롬프트, 흐름 노드를 자동으로 만듭니다.
+            </p>
+          </div>
+          <span className="rounded-full bg-cloud px-3 py-1 text-xs font-black text-moss">
+            현재 선택: {selectedTemplate?.shortName ?? selectedTemplate?.name ?? 'Plain'}
+          </span>
+        </div>
+        <div className="mt-4">
+          <Field label="작업 목표" hint="예: 책을 쓰고 싶어, 웹소설을 써보고 싶어. 입력하면 로컬 키워드 매칭으로 추천합니다.">
+            <input className={inputClass()} value={routeGoal} onChange={(event) => setRouteGoal(event.target.value)} placeholder="무엇을 해보고 싶나요?" />
+          </Field>
+        </div>
+        {recommendedRouteTemplates.length > 0 ? (
+          <div className="mt-3 rounded-2xl bg-pollen/18 px-4 py-3 text-sm font-semibold text-ink/68">
+            추천 루트: {recommendedRouteTemplates.map((template) => template.name).join(', ')}
+          </div>
+        ) : null}
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {visibleTemplates.map((template) => {
+            const selected = selectedRouteTemplateId === template.id;
+            const isApplied = appliedTemplateId === template.id;
+            return (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => setSelectedRouteTemplateId(template.id)}
+                className={classNames(
+                  'rounded-3xl border p-4 text-left transition',
+                  selected ? 'border-moss bg-cloud/80' : 'border-ink/10 bg-white hover:border-moss/50',
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-black">{template.name}</p>
+                    <p className="mt-2 text-sm leading-6 text-ink/62">{template.description}</p>
+                  </div>
+                  {selected ? <Check className="shrink-0 text-moss" size={18} /> : <Route className="shrink-0 text-ink/35" size={18} />}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-ink/55">
+                  <span className="rounded bg-moss/10 px-2 py-1">단계 {template.seedStages.length}</span>
+                  <span className="rounded bg-moss/10 px-2 py-1">프롬프트 {template.seedPrompts.length}</span>
+                  <span className="rounded bg-moss/10 px-2 py-1">자료 {template.seedResources?.length ?? 0}</span>
+                  {isApplied ? <span className="rounded bg-pollen/35 px-2 py-1 text-ink">적용됨</span> : null}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-ink/50">결과물: {template.outcome}</p>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {selectedIdea ? (
+            <AppButton disabled={!canApplyTemplate} onClick={() => applyRouteTemplate(selectedRouteTemplateId)}>
+              <Sparkles size={16} /> 선택 루트 적용
+            </AppButton>
+          ) : (
+            <span className="text-sm font-semibold text-ink/55">새 아이디어 저장 시 선택한 루트가 자동 적용됩니다.</span>
+          )}
+          {selectedIdea?.templateAppliedAt ? (
+            <span className="text-xs font-bold text-ink/45">마지막 적용: {new Date(selectedIdea.templateAppliedAt).toLocaleString()}</span>
+          ) : null}
+        </div>
+      </div>
       <div className="rounded-3xl border border-ink/10 bg-white/85 p-4">
         <p className="mb-3 text-sm font-black text-moss">빠른 입력</p>
         <div className="grid gap-4">
@@ -415,13 +513,15 @@ export function PromptsPanelView(props: {
   promptDraft: PromptDraft;
   setPromptDraft: React.Dispatch<React.SetStateAction<PromptDraft>>;
   prompts: PromptTemplate[];
+  agentPlugins: AgentPlugin[];
   stages: Stage[];
   savePrompt: () => void;
   copyPrompt: (prompt: PromptTemplate) => void;
+  copyAgentPrompt: (body: string) => void;
   notify: (type: ToastType, message: string) => void;
   onGuide: (key: GuideKey) => void;
 }) {
-  const { promptDraft, setPromptDraft, prompts, stages, savePrompt, copyPrompt, notify, onGuide } = props;
+  const { promptDraft, setPromptDraft, prompts, agentPlugins, stages, savePrompt, copyPrompt, copyAgentPrompt, notify, onGuide } = props;
   const [promptQuery, setPromptQuery] = useState('');
   const [promptToolFilter, setPromptToolFilter] = useState<PromptTool | 'ALL'>('ALL');
   const [promptStageFilter, setPromptStageFilter] = useState<'ALL' | 'LINKED' | 'UNLINKED'>('ALL');
@@ -451,6 +551,45 @@ export function PromptsPanelView(props: {
   return (
     <div className="grid gap-5">
       <SectionIntro guideKey="prompts" onGuide={onGuide} />
+      {agentPlugins.length > 0 ? (
+        <section className="rounded-3xl border border-ink/10 bg-white/88 p-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-sm font-black text-moss">Agent Plugin 요청서</p>
+              <h3 className="mt-1 text-lg font-black">프롬프트 준비 탭 &gt; 에이전트 요청서 카드 &gt; 복사</h3>
+              <p className="mt-1 text-sm leading-6 text-ink/62">
+                외부 AI API를 호출하지 않습니다. 필요한 요청서를 복사해 GPT, Claude, Gemini, Codex 같은 대화창에 붙여넣는 구조입니다.
+              </p>
+            </div>
+            <span className="rounded-full bg-cloud px-3 py-1 text-xs font-black text-moss">{agentPlugins.length}개 에이전트</span>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {agentPlugins.map((agent) => (
+              <article key={agent.id} className="rounded-3xl border border-ink/10 bg-cloud/55 p-4">
+                <p className="font-black">{agent.name}</p>
+                <p className="mt-1 text-xs font-bold text-moss">{agent.roleName}</p>
+                <p className="mt-2 text-sm leading-6 text-ink/62">{agent.description}</p>
+                <div className="mt-3 grid gap-2">
+                  {agent.promptPresets.map((preset) => (
+                    <div key={preset.id} className="rounded-2xl bg-white/88 p-3">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div>
+                          <p className="font-bold">{preset.title}</p>
+                          <p className="mt-1 text-xs leading-5 text-ink/55">{preset.description}</p>
+                        </div>
+                        <AppButton className="shrink-0" onClick={() => copyAgentPrompt(preset.body)}>
+                          <Clipboard size={16} /> 복사
+                        </AppButton>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-ink/45">변수: {preset.variables?.join(', ') || '없음'}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className="rounded-3xl border border-ink/10 bg-pollen/15 p-4 text-sm leading-6 text-ink/70">
         <strong>현재 역할:</strong> 이 화면은 자동 생성 AI가 아니라, 단계별로 재사용할 프롬프트를 저장하고 복사하는 라이브러리입니다.
       </div>

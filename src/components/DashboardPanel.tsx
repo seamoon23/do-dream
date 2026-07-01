@@ -1,6 +1,8 @@
 import { ArrowRight, FileText, MonitorSmartphone, Network, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
 import { ideaStatusLabels, type GuideKey, verdictLabels } from '../lib/content';
+import type { AgentPlugin } from '../agentPlugins/types';
+import type { RouteTemplate } from '../routePlugins/types';
 import type { AiReport, FlowNode, Idea, PromptTemplate, Resource, ReviewScore, Stage } from '../types/domain';
 import { AppButton, BriefCard, ProgressCard, SectionIntro } from './ui';
 
@@ -14,10 +16,12 @@ export function DashboardPanelView(props: {
   review?: ReviewScore;
   aiReports: AiReport[];
   flowNodes: FlowNode[];
+  routeTemplate: RouteTemplate;
+  agentPlugins: AgentPlugin[];
   setTab: (tab: DashboardTabKey) => void;
   onGuide: (key: GuideKey) => void;
 }) {
-  const { idea, resources, stages, prompts, review, aiReports, flowNodes, setTab, onGuide } = props;
+  const { idea, resources, stages, prompts, review, aiReports, flowNodes, routeTemplate, agentPlugins, setTab, onGuide } = props;
   const [demoOpen, setDemoOpen] = useState(false);
   const doneStages = stages.filter((stage) => stage.status === 'DONE').length;
   const blockedStages = stages.filter((stage) => stage.status === 'BLOCKED');
@@ -104,6 +108,34 @@ export function DashboardPanelView(props: {
       </section>
 
       {demoOpen ? <DemoTheater onClose={() => setDemoOpen(false)} /> : null}
+
+      {routeTemplate.id !== 'plain' ? (
+        <section className="rounded-3xl border border-ink/10 bg-white/86 p-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-black text-moss">Route Template</p>
+              <h3 className="mt-1 text-xl font-black">{routeTemplate.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-ink/62">{routeTemplate.description}</p>
+            </div>
+            <AppButton className="shrink-0 whitespace-nowrap" onClick={() => setTab('prompts')}>
+              <Sparkles size={16} /> 에이전트 요청서 보기
+            </AppButton>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {(routeTemplate.homeCards ?? []).map((card) => (
+              <BriefCard key={card.key} title={card.title} body={card.description} />
+            ))}
+          </div>
+          {agentPlugins.length > 0 ? (
+            <div className="mt-4 rounded-2xl bg-cloud/55 p-4">
+              <p className="text-sm font-black text-moss">사용 가능한 에이전트</p>
+              <p className="mt-2 text-sm leading-6 text-ink/62">
+                {agentPlugins.map((agent) => agent.name).join(', ')} 요청서는 프롬프트 준비 탭에서 복사할 수 있습니다.
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="grid gap-4 xl:grid-cols-[1fr_0.85fr]">
         <div className="rounded-3xl border border-ink/10 bg-white/86 p-5">

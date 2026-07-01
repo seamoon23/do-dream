@@ -4,6 +4,7 @@ import { emptyAiReportDraft, parseAiReportResponse, type AiReportDraft } from '.
 import { type GuideKey, promptToolLabels, reviewFields, verdictLabels } from '../lib/content';
 import { parseTags, tagsToText } from '../lib/format';
 import { calculateReviewAverage, getReviewVerdict } from '../lib/review';
+import type { RouteTemplate } from '../routePlugins/types';
 import type { AiReport, AiReportSource, ReviewScore } from '../types/domain';
 import { AppButton, BriefCard, EmptyState, Field, inputClass, SectionIntro } from './ui';
 
@@ -46,6 +47,7 @@ export function ReviewPanelView(props: {
   ideaId: string;
   review?: ReviewScore;
   aiReports: AiReport[];
+  routeTemplate: RouteTemplate;
   saveReview: (draft: Omit<ReviewScore, 'id' | 'createdAt' | 'updatedAt'>) => void;
   copyAiReviewPrompt: () => void;
   copyAiReviewPromptWithFocus: (focusTitle: string, focusInstruction: string) => void;
@@ -61,6 +63,7 @@ export function ReviewPanelView(props: {
     ideaId,
     review,
     aiReports,
+    routeTemplate,
     saveReview,
     copyAiReviewPrompt,
     copyAiReviewPromptWithFocus,
@@ -84,6 +87,19 @@ export function ReviewPanelView(props: {
   return (
     <div className="grid gap-5">
       <SectionIntro guideKey="review" onGuide={onGuide} />
+      {routeTemplate.reviewCriteria?.length ? (
+        <section className="rounded-3xl border border-ink/10 bg-white/86 p-4">
+          <p className="text-sm font-black text-moss">{routeTemplate.name} 검토 기준</p>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {routeTemplate.reviewCriteria.map((criterion) => (
+              <div key={criterion.key} className="rounded-2xl bg-cloud/65 p-3">
+                <p className="font-bold">{criterion.label}</p>
+                <p className="mt-1 text-xs leading-5 text-ink/58">{criterion.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <div className="rounded-3xl border border-ink/10 bg-pollen/15 p-4 text-sm leading-6 text-ink/70">
         <strong>중요:</strong> 직접 AI API를 호출하지 않습니다. 점수는 수동 판단이고, AI 협업 리포트는 다른 AI 대화창의 답변을 저장하는 워크플로우입니다.
       </div>

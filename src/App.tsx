@@ -31,6 +31,7 @@ import { edgeStyles, edgeTypeLabels, FlowTypeIcon, flowNodeStyles, statusBadgeCl
 import { ReviewPanelView } from './components/ReviewPanel';
 import { AppButton, classNames, EmptyState, GuideDialog, inputClass, Metric } from './components/ui';
 import { BackupPanelView, IdeaPanelView, PromptsPanelView, ResourcesPanelView, StagesPanelView } from './components/WorkspacePanels';
+import { getAgentsForTemplate } from './agentPlugins/registry';
 import { assertBackupPayload, db, exportBackup, importBackup } from './db/database';
 import type { AiReportDraft } from './lib/aiReport';
 import { copyTextToClipboard } from './lib/clipboard';
@@ -44,6 +45,9 @@ import {
 import { createId, downloadText, readFileAsText } from './lib/format';
 import { buildAiReviewPrompt, buildIdeaMarkdown } from './lib/markdown';
 import { calculateReviewAverage, getReviewVerdict } from './lib/review';
+import { getEffectiveRouteTemplate, routeTemplates } from './routePlugins/registry';
+import { applyRouteTemplate } from './templateEngine/applyRouteTemplate';
+import { recommendTemplatesByKeyword } from './templateEngine/keywordRouter';
 import type {
   AiReport,
   BackupPayload,
@@ -143,6 +147,8 @@ export function App() {
   const [statusFilter, setStatusFilter] = useState<IdeaStatus | 'ALL'>('ALL');
   const [toast, setToast] = useState<Toast>();
   const [guideOpen, setGuideOpen] = useState<GuideKey>();
+  const [routeGoal, setRouteGoal] = useState('');
+  const [selectedRouteTemplateId, setSelectedRouteTemplateId] = useState('plain');
   const [selectedFlowNodeId, setSelectedFlowNodeId] = useState<string>();
   const [selectedFlowEdgeId, setSelectedFlowEdgeId] = useState<string>();
   const [isCreatingIdea, setIsCreatingIdea] = useState(false);
@@ -150,6 +156,8 @@ export function App() {
   const [pendingBackupImport, setPendingBackupImport] = useState<PendingBackupImport>();
 
   const selectedIdea = isCreatingIdea ? undefined : ideas.find((idea) => idea.id === selectedIdeaId);
+  const activeRouteTemplate = getEffectiveRouteTemplate(selectedIdea?.templateId ?? selectedRouteTemplateId);
+  const activeAgentPlugins = activeRouteTemplate.id === 'plain' ? [] : getAgentsForTemplate(activeRouteTemplate.id);
   const resources =
     useLiveQuery(
       (): Promise<Resource[]> =>
@@ -215,6 +223,7 @@ export function App() {
       tags: selectedIdea.tags,
       memo: selectedIdea.memo ?? '',
     });
+    setSelectedRouteTemplateId(selectedIdea.templateId ?? 'plain');
   }, [selectedIdea]);
 
   useEffect(() => {
@@ -234,6 +243,7 @@ export function App() {
     });
   }, [ideas, query, statusFilter]);
 
+  const recommendedRouteTemplates = useMemo(() => recommendTemplatesByKeyword(routeGoal), [routeGoal]);
   const selectedFlowNode = flowNodes.find((node) => node.id === selectedFlowNodeId);
   const selectedFlowEdge = flowEdges.find((edge) => edge.id === selectedFlowEdgeId);
   const stats = {
@@ -268,8 +278,17 @@ export function App() {
         await db.ideas.update(selectedIdea.id, payload);
         notify('success', '아이디어를 저장했습니다.');
       } else {
-        const idea: Idea = { ...payload, id: createId('idea'), createdAt: timestamp };
+        const idea: Idea = {
+          ...payload,
+          id: createId('idea'),
+          templateId: selectedRouteTemplateId,
+          templateAppliedAt: selectedRouteTemplateId === 'plain' ? timestamp : undefined,
+          createdAt: timestamp,
+        };
         await db.ideas.add(idea);
+        if (selectedRouteTemplateId !== 'plain') {
+          await applyRouteTemplate({ ideaId: idea.id, templateId: selectedRouteTemplateId });
+        }
         setIsCreatingIdea(false);
         setSelectedIdeaId(idea.id);
         setTab('dashboard');
@@ -277,6 +296,20 @@ export function App() {
       }
     } catch (error) {
       notify('error', error instanceof Error ? error.message : '아이디어 저장에 실패했습니다.');
+    }
+  }
+
+  async function applySelectedRouteTemplate(templateId: string) {
+    if (!selectedIdea) return;
+    try {
+      const result = await applyRouteTemplate({ ideaId: selectedIdea.id, templateId });
+      setSelectedRouteTemplateId(templateId);
+      notify(
+        'success',
+        `루트 템플릿 적용 완료: 단계 ${result.addedStages}개, 프롬프트 ${result.addedPrompts}개, 자료 ${result.addedResources}개, 노드 ${result.addedFlowNodes}개`,
+      );
+    } catch (error) {
+      notify('error', error instanceof Error ? error.message : '루트 템플릿 적용에 실패했습니다.');
     }
   }
 
@@ -706,6 +739,11 @@ export function App() {
   async function copyPrompt(prompt: PromptTemplate) {
     await copyTextToClipboard(prompt.body);
     notify('success', '프롬프트를 클립보드에 복사했습니다.');
+  }
+
+  async function copyAgentPrompt(body: string) {
+    await copyTextToClipboard(body);
+    notify('success', '에이전트 요청서를 클립보드에 복사했습니다.');
   }
 
   function makeAiReviewPrompt() {
@@ -1156,6 +1194,8 @@ ${focusInstruction}
               onClick={() => {
                 setIsCreatingIdea(true);
                 setSelectedIdeaId(undefined);
+                setSelectedRouteTemplateId('plain');
+                setRouteGoal('');
                 setTab('idea');
               }}
             >
@@ -1275,6 +1315,8 @@ ${focusInstruction}
                 review={review}
                 aiReports={aiReports}
                 flowNodes={flowNodes}
+                routeTemplate={activeRouteTemplate}
+                agentPlugins={activeAgentPlugins}
                 setTab={setTab}
                 onGuide={setGuideOpen}
               />
@@ -1284,6 +1326,13 @@ ${focusInstruction}
                 draft={ideaDraft}
                 selectedIdea={selectedIdea}
                 setDraft={setIdeaDraft}
+                routeTemplates={routeTemplates}
+                recommendedRouteTemplates={recommendedRouteTemplates}
+                routeGoal={routeGoal}
+                setRouteGoal={setRouteGoal}
+                selectedRouteTemplateId={selectedRouteTemplateId}
+                setSelectedRouteTemplateId={setSelectedRouteTemplateId}
+                applyRouteTemplate={applySelectedRouteTemplate}
                 saveIdea={saveIdea}
                 deleteIdea={deleteIdea}
                 onGuide={setGuideOpen}
@@ -1318,9 +1367,11 @@ ${focusInstruction}
                 promptDraft={promptDraft}
                 setPromptDraft={setPromptDraft}
                 prompts={prompts}
+                agentPlugins={activeAgentPlugins}
                 stages={stages}
                 savePrompt={savePrompt}
                 copyPrompt={copyPrompt}
+                copyAgentPrompt={copyAgentPrompt}
                 notify={notify}
                 onGuide={setGuideOpen}
               />
@@ -1330,6 +1381,7 @@ ${focusInstruction}
                 ideaId={selectedIdea.id}
                 review={review}
                 aiReports={aiReports}
+                routeTemplate={activeRouteTemplate}
                 saveReview={saveReview}
                 copyAiReviewPrompt={copyAiReviewPrompt}
                 copyAiReviewPromptWithFocus={copyAiReviewPromptWithFocus}

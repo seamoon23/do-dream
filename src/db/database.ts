@@ -52,7 +52,7 @@ export const db = new IdeaRouteDb();
 export async function exportBackup(): Promise<BackupPayload> {
   return {
     app: 'IdeaRouteBuilder',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     data: {
       ideas: await db.ideas.toArray(),
@@ -73,7 +73,7 @@ export function assertBackupPayload(value: unknown): asserts value is BackupPayl
   }
 
   const payload = value as BackupPayload;
-  if (payload.app !== 'IdeaRouteBuilder' || ![1, 2].includes(payload.version) || !payload.data) {
+  if (payload.app !== 'IdeaRouteBuilder' || ![1, 2, 3].includes(payload.version) || !payload.data) {
     throw new Error('Idea Route Builder 백업 파일 형식이 아닙니다.');
   }
 
