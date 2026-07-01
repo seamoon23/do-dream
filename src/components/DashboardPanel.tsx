@@ -27,6 +27,15 @@ export function DashboardPanelView(props: {
   const blockedStages = stages.filter((stage) => stage.status === 'BLOCKED');
   const doingStage = stages.find((stage) => stage.status === 'DOING');
   const unreviewedResources = resources.filter((resource) => resource.reviewStatus === 'UNREVIEWED' || resource.reviewStatus === 'INSUFFICIENT');
+  const hasIdeaOverview = Boolean(idea.title.trim() && idea.summary.trim());
+  const validatedResources = resources.filter((resource) => !resource.sourceTemplateId || resource.reviewStatus === 'VALID');
+  const startedStages = stages.filter((stage) => !stage.sourceTemplateId || stage.status !== 'TODO');
+  const customPrompts = prompts.filter((prompt) => !prompt.sourceTemplateId);
+  const customFlowNodes = flowNodes.filter((node) => !node.sourceTemplateId && (node.type !== 'STAGE' || !node.refStageId));
+  const hasUsableResources = validatedResources.length >= 2;
+  const hasStartedStages = startedStages.length > 0;
+  const hasCustomPrompt = customPrompts.length > 0;
+  const hasMeaningfulFlow = routeTemplate.id === 'plain' ? flowNodes.length > 0 : customFlowNodes.length > 0;
   const progress = stages.length > 0 ? Math.round((doneStages / stages.length) * 100) : 0;
   const latestAiReport = aiReports[0];
   const recentlyUpdated = [...resources, ...stages, ...prompts]
@@ -67,13 +76,13 @@ export function DashboardPanelView(props: {
               ? { tab: 'flow' as DashboardTabKey, label: '흐름을 그림으로 보기', body: '단계와 이슈를 카드처럼 펼치면 다음 행동이 더 선명해집니다.' }
               : { tab: 'backup' as DashboardTabKey, label: '오늘 백업하기', body: 'IndexedDB는 로컬 저장소라 중요한 정리는 JSON 백업을 남겨두는 편이 안전합니다.' };
 
-  const checklist = [
-    { label: '아이디어 개요', done: Boolean(idea.title && idea.summary), tab: 'idea' as DashboardTabKey },
-    { label: '자료 2개 이상', done: resources.length >= 2, tab: 'resources' as DashboardTabKey },
-    { label: '실행 단계', done: stages.length > 0, tab: 'stages' as DashboardTabKey },
-    { label: '프롬프트', done: prompts.length > 0, tab: 'prompts' as DashboardTabKey },
+  const readinessChecklist = [
+    { label: '아이디어 개요', done: hasIdeaOverview, tab: 'idea' as DashboardTabKey },
+    { label: '실제 자료 2개 이상', done: hasUsableResources, tab: 'resources' as DashboardTabKey },
+    { label: '단계 진행 시작', done: hasStartedStages, tab: 'stages' as DashboardTabKey },
+    { label: '내 프롬프트', done: hasCustomPrompt, tab: 'prompts' as DashboardTabKey },
     { label: '진행 판단', done: Boolean(review), tab: 'review' as DashboardTabKey },
-    { label: '흐름 카드', done: flowNodes.length > 0, tab: 'flow' as DashboardTabKey },
+    { label: '내 흐름 카드', done: hasMeaningfulFlow, tab: 'flow' as DashboardTabKey },
   ];
 
   return (
@@ -145,11 +154,11 @@ export function DashboardPanelView(props: {
               <h3 className="mt-1 text-xl font-black">어디까지 정리됐나요?</h3>
             </div>
             <span className="rounded-full bg-cloud px-3 py-1 text-sm font-black text-moss">
-              {checklist.filter((item) => item.done).length}/{checklist.length}
+              {readinessChecklist.filter((item) => item.done).length}/{readinessChecklist.length}
             </span>
           </div>
           <div className="mt-4 grid gap-2 md:grid-cols-2">
-            {checklist.map((item) => (
+            {readinessChecklist.map((item) => (
               <button
                 key={item.label}
                 onClick={() => setTab(item.tab)}
@@ -160,6 +169,11 @@ export function DashboardPanelView(props: {
               </button>
             ))}
           </div>
+          {routeTemplate.id !== 'plain' ? (
+            <p className="mt-3 text-xs font-semibold leading-5 text-ink/48">
+              템플릿이 자동 생성한 단계, 자료, 프롬프트, 흐름 노드는 초안 골격으로 보고 완료율에는 넣지 않습니다.
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-3xl border border-ink/10 bg-white/86 p-5">
