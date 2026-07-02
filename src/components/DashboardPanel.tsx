@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { ideaStatusLabels, type GuideKey, verdictLabels } from '../lib/content';
 import type { AgentPlugin } from '../agentPlugins/types';
 import type { RouteTemplate } from '../routePlugins/types';
+import type { TutorialMission } from '../tutorial/missionCoach';
 import type { AiReport, FlowNode, Idea, PromptTemplate, Resource, ReviewScore, Stage } from '../types/domain';
-import { AppButton, BriefCard, ProgressCard, SectionIntro } from './ui';
+import { AppButton, BriefCard, classNames, ProgressCard, SectionIntro } from './ui';
 
 type DashboardTabKey = GuideKey;
 
@@ -18,10 +19,28 @@ export function DashboardPanelView(props: {
   flowNodes: FlowNode[];
   routeTemplate: RouteTemplate;
   agentPlugins: AgentPlugin[];
+  tutorialMission?: TutorialMission;
+  onTutorialMissionAction: (mission: TutorialMission) => void;
+  onDismissTutorialMission: (missionId: string) => void;
   setTab: (tab: DashboardTabKey) => void;
   onGuide: (key: GuideKey) => void;
 }) {
-  const { idea, resources, stages, prompts, review, aiReports, flowNodes, routeTemplate, agentPlugins, setTab, onGuide } = props;
+  const {
+    idea,
+    resources,
+    stages,
+    prompts,
+    review,
+    aiReports,
+    flowNodes,
+    routeTemplate,
+    agentPlugins,
+    tutorialMission,
+    onTutorialMissionAction,
+    onDismissTutorialMission,
+    setTab,
+    onGuide,
+  } = props;
   const [demoOpen, setDemoOpen] = useState(false);
   const doneStages = stages.filter((stage) => stage.status === 'DONE').length;
   const blockedStages = stages.filter((stage) => stage.status === 'BLOCKED');
@@ -88,33 +107,45 @@ export function DashboardPanelView(props: {
   return (
     <div className="grid gap-5">
       <SectionIntro guideKey="dashboard" onGuide={onGuide} />
-      <section className="rounded-[2rem] border border-ink/10 bg-[linear-gradient(135deg,#fffaf0_0%,#eef4ef_100%)] p-6 shadow-panel">
-        <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
-          <div>
-            <p className="text-sm font-black text-moss">오늘의 다음 행동</p>
-            <h3 className="mt-2 text-3xl font-black leading-tight">{nextAction.label}</h3>
-            <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">{nextAction.body}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <AppButton variant="primary" onClick={() => setTab(nextAction.tab)}>
-                바로 하기 <ArrowRight size={16} />
-              </AppButton>
-              <AppButton onClick={() => setTab('flow')}>
-                <Network size={16} /> 흐름 보기
-              </AppButton>
-              <AppButton onClick={() => setTab('backup')}>
-                <ShieldCheck size={16} /> 백업하기
-              </AppButton>
-              <AppButton onClick={() => setDemoOpen(true)}>
-                <MonitorSmartphone size={16} /> 사용 예시 보기
-              </AppButton>
+      {tutorialMission ? (
+        <MissionCoachCard
+          mission={tutorialMission}
+          currentConclusion={currentConclusion}
+          currentReason={currentReason}
+          setTab={setTab}
+          onAction={onTutorialMissionAction}
+          onDismiss={onDismissTutorialMission}
+          onDemo={() => setDemoOpen(true)}
+        />
+      ) : (
+        <section className="rounded-[2rem] border border-ink/10 bg-[linear-gradient(135deg,#fffaf0_0%,#eef4ef_100%)] p-6 shadow-panel">
+          <div className="grid gap-5 xl:grid-cols-[1fr_390px]">
+            <div>
+              <p className="text-sm font-black text-moss">오늘의 다음 행동</p>
+              <h3 className="mt-2 text-3xl font-black leading-tight">{nextAction.label}</h3>
+              <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">{nextAction.body}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <AppButton variant="primary" onClick={() => setTab(nextAction.tab)}>
+                  바로 하기 <ArrowRight size={16} />
+                </AppButton>
+                <AppButton onClick={() => setTab('flow')}>
+                  <Network size={16} /> 흐름 보기
+                </AppButton>
+                <AppButton onClick={() => setTab('backup')}>
+                  <ShieldCheck size={16} /> 백업하기
+                </AppButton>
+                <AppButton onClick={() => setDemoOpen(true)}>
+                  <MonitorSmartphone size={16} /> 사용 예시 보기
+                </AppButton>
+              </div>
+            </div>
+            <div className="grid gap-3 rounded-3xl bg-white/75 p-4">
+              <BriefCard title="현재 결론" body={currentConclusion} />
+              <BriefCard title="막힌 이유" body={currentReason} />
             </div>
           </div>
-          <div className="grid gap-3 rounded-3xl bg-white/75 p-4">
-            <BriefCard title="현재 결론" body={currentConclusion} />
-            <BriefCard title="막힌 이유" body={currentReason} />
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {demoOpen ? <DemoTheater onClose={() => setDemoOpen(false)} /> : null}
 
@@ -275,6 +306,109 @@ export function DashboardPanelView(props: {
         </div>
       </section>
     </div>
+  );
+}
+
+function MissionCoachCard(props: {
+  mission: TutorialMission;
+  currentConclusion: string;
+  currentReason: string;
+  setTab: (tab: DashboardTabKey) => void;
+  onAction: (mission: TutorialMission) => void;
+  onDismiss: (missionId: string) => void;
+  onDemo: () => void;
+}) {
+  const { mission, currentConclusion, currentReason, setTab, onAction, onDismiss, onDemo } = props;
+  const [reasonOpen, setReasonOpen] = useState(false);
+  const doneCount = mission.waypoints.filter((waypoint) => waypoint.status === 'done').length;
+  const progress = Math.round((doneCount / mission.waypoints.length) * 100);
+
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-moss/20 bg-[linear-gradient(135deg,#fffaf0_0%,#eef4ef_74%,#ffffff_100%)] shadow-panel">
+      <div className="grid gap-5 p-6 xl:grid-cols-[1fr_360px]">
+        <div>
+          <p className="text-sm font-black text-moss">{mission.eyebrow}</p>
+          <h3 className="mt-2 max-w-3xl text-3xl font-black leading-tight">{mission.title}</h3>
+          <p className="mt-3 max-w-2xl text-base leading-7 text-ink/68">{mission.body}</p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <AppButton variant="primary" onClick={() => onAction(mission)}>
+              {mission.action.label} <ArrowRight size={16} />
+            </AppButton>
+            {mission.secondaryAction ? (
+              <AppButton onClick={() => setTab(mission.secondaryAction!.tab)}>
+                <Sparkles size={16} /> {mission.secondaryAction.label}
+              </AppButton>
+            ) : null}
+            <AppButton onClick={() => setReasonOpen((value) => !value)}>
+              <Sparkles size={16} /> 왜 이게 먼저인가요?
+            </AppButton>
+            {mission.canDismiss ? (
+              <AppButton onClick={() => onDismiss(mission.id)}>
+                <ArrowRight size={16} /> 이 미션 건너뛰기
+              </AppButton>
+            ) : null}
+          </div>
+          {reasonOpen ? <p className="mt-4 max-w-3xl rounded-2xl bg-white/75 px-4 py-3 text-sm font-semibold leading-6 text-ink/66">{mission.rationale}</p> : null}
+        </div>
+        <div className="grid gap-3 rounded-3xl bg-white/78 p-4">
+          <BriefCard title="현재 결론" body={currentConclusion} />
+          <BriefCard title="막힌 이유" body={currentReason} />
+          <div className="rounded-2xl bg-cloud/70 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-black text-moss">튜토리얼 지도</p>
+              <span className="text-xs font-black text-ink/55">{progress}%</span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+              <div className="h-full rounded-full bg-moss transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="border-t border-ink/10 bg-white/58 p-4">
+        <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-6">
+          {mission.waypoints.map((waypoint, index) => {
+            const statusLabel = waypoint.status === 'done' ? '완료' : waypoint.status === 'current' ? '지금' : waypoint.status === 'open' ? '열림' : '나중';
+            return (
+              <button
+                key={waypoint.key}
+                onClick={() => setTab(waypoint.tab)}
+                className={classNames(
+                  'grid min-h-[94px] gap-2 rounded-2xl border px-3 py-3 text-left transition',
+                  waypoint.status === 'done' && 'border-moss/25 bg-moss/10',
+                  waypoint.status === 'current' && 'border-moss bg-white shadow-soft',
+                  waypoint.status === 'open' && 'border-ink/10 bg-white/76 hover:border-moss/45',
+                  waypoint.status === 'locked' && 'border-ink/8 bg-cloud/45 text-ink/48 hover:bg-white/70',
+                )}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-xs font-black text-white">{index + 1}</span>
+                  <span
+                    className={classNames(
+                      'rounded-full px-2 py-1 text-[11px] font-black',
+                      waypoint.status === 'current' ? 'bg-pollen/45 text-ink' : 'bg-white/80 text-ink/55',
+                    )}
+                  >
+                    {statusLabel}
+                  </span>
+                </div>
+                <p className="text-sm font-black">{waypoint.label}</p>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <AppButton onClick={() => setTab('flow')}>
+            <Network size={16} /> 흐름 보기
+          </AppButton>
+          <AppButton onClick={() => setTab('backup')}>
+            <ShieldCheck size={16} /> 백업하기
+          </AppButton>
+          <AppButton onClick={onDemo}>
+            <MonitorSmartphone size={16} /> 사용 예시 보기
+          </AppButton>
+        </div>
+      </div>
+    </section>
   );
 }
 

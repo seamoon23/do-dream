@@ -48,6 +48,7 @@ import { calculateReviewAverage, getReviewVerdict } from './lib/review';
 import { getEffectiveRouteTemplate, routeTemplates } from './routePlugins/registry';
 import { applyRouteTemplate } from './templateEngine/applyRouteTemplate';
 import { recommendTemplatesByKeyword } from './templateEngine/keywordRouter';
+import { getTutorialMission, type TutorialMission, type TutorialMissionPrefill } from './tutorial/missionCoach';
 import type {
   AiReport,
   BackupPayload,
@@ -66,6 +67,7 @@ import type {
 type TabKey = GuideKey;
 type Toast = { type: 'success' | 'error' | 'info'; message: string };
 type PendingBackupImport = { payload: BackupPayload; fileName: string };
+type DismissedTutorialMissionMap = Record<string, string[]>;
 
 const tabItems = [
   { value: 'dashboard', label: '홈', Icon: Route },
@@ -116,6 +118,8 @@ const emptyPrompt = (): Omit<PromptTemplate, 'id' | 'createdAt' | 'updatedAt'> =
   version: 1,
 });
 
+const tutorialDismissedStorageKey = 'idea-route-builder:dismissed-tutorial-missions';
+
 const defaultReview = (ideaId: string): Omit<ReviewScore, 'id' | 'createdAt' | 'updatedAt'> => ({
   ideaId,
   problemClarity: 3,
@@ -154,6 +158,14 @@ export function App() {
   const [isCreatingIdea, setIsCreatingIdea] = useState(false);
   const [lastBackupAt, setLastBackupAt] = useState(() => window.localStorage.getItem('idea-route-builder:last-backup-at') ?? '');
   const [pendingBackupImport, setPendingBackupImport] = useState<PendingBackupImport>();
+  const [dismissedTutorialMissionMap, setDismissedTutorialMissionMap] = useState<DismissedTutorialMissionMap>(() => {
+    try {
+      const stored = window.localStorage.getItem(tutorialDismissedStorageKey);
+      return stored ? (JSON.parse(stored) as DismissedTutorialMissionMap) : {};
+    } catch {
+      return {};
+    }
+  });
 
   const selectedIdea = isCreatingIdea ? undefined : ideas.find((idea) => idea.id === selectedIdeaId);
   const activeRouteTemplate = getEffectiveRouteTemplate(selectedIdea?.templateId ?? selectedRouteTemplateId);
@@ -198,6 +210,23 @@ export function App() {
         selectedIdeaId ? db.aiReports.where('ideaId').equals(selectedIdeaId).reverse().sortBy('updatedAt') : Promise.resolve([] as AiReport[]),
       [selectedIdeaId],
     ) ?? [];
+  const dismissedTutorialMissionIds = selectedIdea ? (dismissedTutorialMissionMap[selectedIdea.id] ?? []) : [];
+  const tutorialMission = useMemo(
+    () =>
+      selectedIdea
+        ? getTutorialMission({
+            routeTemplateId: activeRouteTemplate.id,
+            idea: selectedIdea,
+            resources,
+            stages,
+            prompts,
+            review,
+            aiReports,
+            dismissedMissionIds: dismissedTutorialMissionIds,
+          })
+        : undefined,
+    [activeRouteTemplate.id, aiReports, dismissedTutorialMissionIds, prompts, resources, review, selectedIdea, stages],
+  );
 
   useEffect(() => {
     if (!isCreatingIdea && !selectedIdeaId && ideas.length > 0) {
@@ -256,6 +285,50 @@ export function App() {
 
   function notify(type: Toast['type'], message: string) {
     setToast({ type, message });
+  }
+
+  function findStageIdByTitleHints(hints?: string[]) {
+    if (!hints?.length) return '';
+    const normalizedHints = hints.map((hint) => hint.trim().toLowerCase()).filter(Boolean);
+    return stages.find((stage) => normalizedHints.some((hint) => stage.title.toLowerCase().includes(hint)))?.id ?? '';
+  }
+
+  function applyTutorialPrefill(prefill?: TutorialMissionPrefill) {
+    if (!prefill) return;
+
+    const stageId = findStageIdByTitleHints(prefill.stageTitleHints);
+    if (prefill.kind === 'resource') {
+      setResourceDraft({
+        ...emptyResource(),
+        ...prefill.resource,
+        linkedStageId: stageId,
+      });
+      return;
+    }
+
+    setPromptDraft({
+      ...emptyPrompt(),
+      ...prefill.prompt,
+      stageId: stageId || undefined,
+    });
+  }
+
+  function startTutorialMission(mission: TutorialMission) {
+    applyTutorialPrefill(mission.action.prefill);
+    setTab(mission.action.tab);
+    notify('info', mission.action.toast ?? '미션 화면으로 이동했습니다.');
+  }
+
+  function dismissTutorialMission(missionId: string) {
+    if (!selectedIdea) return;
+
+    const next = {
+      ...dismissedTutorialMissionMap,
+      [selectedIdea.id]: Array.from(new Set([...(dismissedTutorialMissionMap[selectedIdea.id] ?? []), missionId])),
+    };
+    setDismissedTutorialMissionMap(next);
+    window.localStorage.setItem(tutorialDismissedStorageKey, JSON.stringify(next));
+    notify('info', '이 미션은 잠시 건너뛰었습니다.');
   }
 
   async function saveIdea() {
@@ -1317,6 +1390,9 @@ ${focusInstruction}
                 flowNodes={flowNodes}
                 routeTemplate={activeRouteTemplate}
                 agentPlugins={activeAgentPlugins}
+                tutorialMission={tutorialMission}
+                onTutorialMissionAction={startTutorialMission}
+                onDismissTutorialMission={dismissTutorialMission}
                 setTab={setTab}
                 onGuide={setGuideOpen}
               />

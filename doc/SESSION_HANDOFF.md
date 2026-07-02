@@ -30,6 +30,7 @@
 - 최신 작업 커밋:
   - `ee23599 feat: add route template plugin architecture`
   - `506bb9e fix: exclude template scaffolds from readiness`
+  - `723865f docs: add route template handoff notes`
 - PR 생성 시도:
   - GitHub 앱 커넥터 `_create_pull_request`는 `403 Resource not accessible by integration`으로 실패
   - `gh` CLI는 설치되어 있지 않음
@@ -132,6 +133,17 @@ npm run build
 - 단계는 템플릿 TODO 상태가 아니라 실제 진행이 시작된 항목 중심으로 계산
 - 대시보드에 템플릿 골격은 완료율에 넣지 않는다는 안내 표시
 
+### 미션 코치 레이어
+
+초보 사용자가 템플릿 골격만 보고 다음에 무엇을 채워야 할지 막히는 문제를 줄이기 위해 홈 대시보드에 튜토리얼형 다음 미션을 추가했다.
+
+- `src/tutorial/missionCoach.ts`에서 현재 아이디어/자료/단계/프롬프트/검토 상태를 읽어 다음 미션을 계산
+- `웹소설 1화 완성 루트`에서는 씨앗, 장르, 인물, 세계/흐름, 1화, 피드백 지도를 표시
+- 미션 시작 버튼을 누르면 관련 탭으로 이동하고 자료 입력칸에 작성 질문 뼈대를 미리 채움
+- 미션은 저장/완료 처리를 자동으로 하지 않으며 사용자가 직접 수정하고 저장해야 함
+- 미션 건너뛰기는 IndexedDB가 아니라 `localStorage`에 아이디어별로 저장
+- Plain Mode는 기존 기본 흐름 기준의 가벼운 다음 미션을 표시
+
 ## 6. 데이터 모델 변경
 
 기존 Dexie 테이블은 유지하고 optional 필드를 추가했다.
@@ -196,6 +208,8 @@ src/
     applyRouteTemplate.ts
     createSeedData.ts
     keywordRouter.ts
+  tutorial/
+    missionCoach.ts
   types/
     domain.ts
 doc/
@@ -212,6 +226,8 @@ doc/
    - 새 아이디어 생성
    - 웹소설 루트 적용
    - 대시보드 완료율
+   - 미션 코치 카드와 미션 건너뛰기
+   - 미션 시작 시 자료 입력칸 프리필
    - 프롬프트 준비 탭의 에이전트 요청서 복사
 3. 다음 템플릿 추가
    - 전자책 초안 완성 루트
