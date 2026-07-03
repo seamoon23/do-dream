@@ -1,6 +1,6 @@
 # Do Dream
 
-아이디어를 해드림, 실행을 두드림.
+아이디어를 두드림, 실행을 해드림.
 
 Do Dream은 Idea Route Builder를 부제로 하는 로컬 우선 웹앱입니다.
 
